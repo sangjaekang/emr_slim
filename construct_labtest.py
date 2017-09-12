@@ -205,7 +205,15 @@ def check_time_format(x):
     else:
         raise ValueError("wrong type time format : {}".format(x))
 
-
+def check_directory(directory_path):
+    # syntax checking for directory
+    if not (directory_path[-1] is '/'):
+        directory_path  = directory_path + '/'
+    # not exists in directory
+    if not os.path.exists(directory_path):
+        os.makedirs(directory_path)
+    
+    return directory_path       
 def yield_time_column(time,end_t):
     # time-series column을　만드는데　있어서　순차적으로　생성하는　함수X
     # 1210 1211 1212 1301 1302 이런식으로　생성
