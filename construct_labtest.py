@@ -21,6 +21,7 @@ BASE_PATH = os_path[:find_path.search(os_path).span()[1]]
 DATA_DIR  = BASE_PATH + '/data/'
 PREP_OUTPUT_DIR  = DATA_DIR + 'prep/'
 LABEL_PATIENT_PATH = 'label_patient_df.h5'
+LABTEST_OUTPUT_PATH = 'labtest_df.h5'
 
 
 def get_na_label_df():
@@ -152,10 +153,10 @@ def get_labtest_df(no,aggregate_type='mean'):
     col_list = get_timeseries_column()
     # create empty dataframe
     try:
-        use_labtest_values = lab_store.select('metadata/usecol').col.values
+        lab_node = lab_store.get_node('prep')
+        use_labtest_values = list(lab_node._v_children.keys())
         result_df = pd.DataFrame(columns=col_list, index=use_labtest_values)
 
-        lab_node = lab_store.get_node('prep')
         for lab_name in lab_node._v_children.keys():
             result_lab_series = result_df.loc[lab_name]
             target_df = lab_store.select('prep/{}'.format(lab_name),where='no=={}'.format(no))

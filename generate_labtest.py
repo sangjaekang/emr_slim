@@ -3,6 +3,9 @@ import sys, os, re
 import numpy as np
 import pandas as pd
 import time
+import argparse
+import multiprocessing
+import re
 
 os_path = os.path.abspath('./') ; find_path = re.compile('emr_slim')
 BASE_PATH = os_path[:find_path.search(os_path).span()[1]]
@@ -22,9 +25,8 @@ PREP_OUTPUT_DIR  = DATA_DIR + 'prep/'
 INPUT_DIR = DATA_DIR +'input/'
 LABEL_PATIENT_PATH = 'label_patient_df.h5'
 
-
 def save_patient_input(no_range,label_name,save_dir=None,time_length=6,gap_length=1,target_length=3,offset_min_counts=50,offset_max_counts=100):
-    global save_dir, DEBUG_PRINT, PREP_OUTPUT_DIR, LABEL_PATIENT_PATH
+    global DEBUG_PRINT, PREP_OUTPUT_DIR, LABEL_PATIENT_PATH
     if save_dir is None:
         save_dir = INPUT_DIR
 
@@ -41,15 +43,16 @@ def save_patient_input(no_range,label_name,save_dir=None,time_length=6,gap_lengt
     colist = get_timeseries_column()
 
     for idx, no in enumerate(no_range):
-        if DEBUG_PRINT and idx %1000 == 0:  print("process({}){} th start".format(os.getpid(),idx))
+        if DEBUG_PRINT and idx %50 == 0:  print("process({}){} th start".format(os.getpid(),idx))
         emr_df = get_labtest_df(no)
         label_series = get_patient_timeseries_label(no,label_df)
 
         for i in range(0,len(colist) - (time_length+gap_length+target_length)):
             window = emr_df.loc[:,colist[i]:colist[time_length-1+i]]
-            if window.count().sum() >= offset_min_counts and window.count().sum() <= offset_max_counts:
+            counts_in_window = window.count().sum()
+            if counts_in_window >= offset_min_counts and counts_in_window <= offset_max_counts:
                 target_stime = colist[time_length-1+gap_length+i]
-                label_value = check_label(label_series.loc[target_stime:target_stime+target_length-1])
+                label_value = check_label(label_series.loc[target_stime:get_add_interval(target_stime,target_length-1)])
                 if np.isnan(label_value): continue
                 file_path = save_dir +'{}/{}_{}.npy'.format(label_value,no,i)
                 np.save(file_path,window.as_matrix())
@@ -100,6 +103,14 @@ def get_timeseries_column():
 
     return col_list
 
+def check_time_format(x):
+    # timeformat(ex: 20170801)의　형태로　되어있는지　확인하는　함수
+    re_time = re.compile('^\d{8}$')
+    if re_time.match(str(x)):
+        return int(str(x)[2:6])
+    else:
+        raise ValueError("wrong type time format : {}".format(x))
+
 
 def get_time_interval(t_1,t_2):
     #t_1 t_2 두 시각의 시간 차 계산
@@ -111,6 +122,11 @@ def get_time_interval(t_1,t_2):
     else :
         return _get_time(t_1)-_get_time(t_2)
 
+def get_add_interval(t,interval):
+    #t에다가　interval을　더한　시간
+    year = t//100; month = t%100
+    times = (year*12+month+interval)
+    return (times//12*100+ times%12)
 
 def write_metadata_README(path, label_name,time_length,gap_length,target_length,offset_min_counts,offset_max_counts):
     metadata_README = '''
@@ -137,7 +153,7 @@ def check_label(x):
         if y>0:  return int(y)
             # hyper : y==2
             # hypo  : y==1
-        if y is 0 : NORMAL_FLAG = True
+        if y == 0.0 : NORMAL_FLAG = True
             # normal : y==0
     if NORMAL_FLAG:
         return 0
@@ -149,6 +165,7 @@ def _set_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('path', help='save path')
     parser.add_argument('label', help='label_name')
+    parser.add_argument('chunk_size', help='the number of patients using per one process')
     parser.add_argument('time_length',help='time_length')
     parser.add_argument('gap_length', help='gap_length')
     parser.add_argument('target_length',help='target_length')
@@ -159,10 +176,10 @@ def _set_parser():
 
 
 if __name__ == '__main__':
-    global PREP_OUTPUT_DIR, LABEL_PATIENT_PATH
     #argument
     args = _set_parser()
     label_name = args.label 
+    chunk_size = int(chunk_size)
     time_length = int(args.time_length) 
     gap_length = int(args.gap_length)
     target_length = int(args.target_length)
@@ -189,11 +206,11 @@ if __name__ == '__main__':
     ## train set generating
     print("Creating pool with 8 workers")
     start_time = time.time()
-    pool = multiprocessing.Pool()
+    pool = multiprocessing.Pool(processes=8)
     print("Invoking apply train_set")
     for divider in np.array_split(train_set,8):
-        pool.apply_async(save_patient_input,args=(divider,label_name,train_path,time_length,
-                     gap_length,target_length,offset_min_counts,offset_max_counts,))
+        pool.apply_async(save_patient_input,[divider[:chunk_size],label_name,train_path,time_length,
+                     gap_length,target_length,offset_min_counts,offset_max_counts])
     pool.close()
     pool.join()    
     print("trainset Finished--consumed time : {}".format(time.time()-start_time))
@@ -201,11 +218,11 @@ if __name__ == '__main__':
     ## test set generating
     print("Creating pool with 8 workers")
     start_time = time.time()
-    pool = multiprocessing.Pool()
+    pool = multiprocessing.Pool(processes=8)
     print("Invoking apply test_set")
     for divider in np.array_split(test_set,8):
-        pool.apply_async(save_patient_input,args=(divider,label_name,test_path,time_length,
-                     gap_length,target_length,offset_min_counts,offset_max_counts,))
+        pool.apply_async(save_patient_input,[divider[:chunk_size],label_name,test_path,time_length,
+                     gap_length,target_length,offset_min_counts,offset_max_counts])
     pool.close()
     pool.join()    
     print("testset Finished--consumed time : {}".format(time.time()-start_time))
@@ -213,11 +230,11 @@ if __name__ == '__main__':
     ## validation set generating
     print("Creating pool with 8 workers")
     start_time = time.time()
-    pool = multiprocessing.Pool()
+    pool = multiprocessing.Pool(processes=8)
     print("Invoking apply test_set")
     for divider in np.array_split(validation_set,8):
-        pool.apply_async(save_patient_input,args=(divider,label_name,validation_path,time_length,
-                     gap_length,target_length,offset_min_counts,offset_max_counts,))
+        pool.apply_async(save_patient_input,[divider[:chunk_size],label_name,validation_path,time_length,
+                     gap_length,target_length,offset_min_counts,offset_max_counts,])
     pool.close()
     pool.join()    
     print("validation Finished--consumed time : {}".format(time.time()-start_time))
