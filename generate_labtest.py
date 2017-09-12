@@ -2,6 +2,7 @@
 import sys, os, re
 import numpy as np
 import pandas as pd
+import time
 
 os_path = os.path.abspath('./') ; find_path = re.compile('emr_slim')
 BASE_PATH = os_path[:find_path.search(os_path).span()[1]]
@@ -40,7 +41,7 @@ def save_patient_input(no_range,label_name,save_dir=None,time_length=6,gap_lengt
     colist = get_timeseries_column()
 
     for idx, no in enumerate(no_range):
-        if DEBUG_PRINT : print("{} th start".format(idx))
+        if DEBUG_PRINT and idx %1000 == 0:  print("process({}){} th start".format(os.getpid(),idx))
         emr_df = get_labtest_df(no)
         label_series = get_patient_timeseries_label(no,label_df)
 
@@ -132,17 +133,91 @@ def write_metadata_README(path, label_name,time_length,gap_length,target_length,
 
 def check_label(x):
     NORMAL_FLAG = False
-
     for _,y in x.items():
-        if y>0: 
+        if y>0:  return int(y)
             # hyper : y==2
             # hypo  : y==1
-            return int(y)
-        if y is 0 :
+        if y is 0 : NORMAL_FLAG = True
             # normal : y==0
-            NORMAL_FLAG = True
-
     if NORMAL_FLAG:
         return 0
     else:
         return np.nan
+
+
+def _set_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('path', help='save path')
+    parser.add_argument('label', help='label_name')
+    parser.add_argument('time_length',help='time_length')
+    parser.add_argument('gap_length', help='gap_length')
+    parser.add_argument('target_length',help='target_length')
+    parser.add_argument('offset_min_counts',help='offset_min_counts')
+    parser.add_argument('offset_max_counts',help='offset_max_counts')
+    args = parser.parse_args()
+    return args
+
+
+if __name__ == '__main__':
+    global PREP_OUTPUT_DIR, LABEL_PATIENT_PATH
+    #argument
+    args = _set_parser()
+    label_name = args.label 
+    time_length = int(args.time_length) 
+    gap_length = int(args.gap_length)
+    target_length = int(args.target_length)
+    offset_min_counts = int(args.offset_min_counts)
+    offset_max_counts = int(args.offset_max_counts) 
+    
+    o_path = check_directory(args.path)
+
+    train_path = o_path + 'train/'; train_path = check_directory(train_path)
+    test_path = o_path + 'test/'; test_path = check_directory(test_path)
+    validation_path = o_path + 'validation/'; validation_path = check_directory(validation_path)
+
+    PREP_OUTPUT_DIR = check_directory(PREP_OUTPUT_DIR)
+    output_path = PREP_OUTPUT_DIR + LABEL_PATIENT_PATH
+
+    write_metadata_README(o_path, label_name,time_length,gap_length,target_length,offset_min_counts,offset_max_counts)
+
+    sample_store = pd.HDFStore(output_path,mode='r')
+    train_set = sample_store.select('label/{}/train'.format(label_name)).no.unique()
+    validation_set = sample_store.select('label/{}/validation'.format(label_name)).no.unique()
+    test_set = sample_store.select('label/{}/test'.format(label_name)).no.unique()
+    sample_store.close()
+
+    ## train set generating
+    print("Creating pool with 8 workers")
+    start_time = time.time()
+    pool = multiprocessing.Pool()
+    print("Invoking apply train_set")
+    for divider in np.array_split(train_set,8):
+        pool.apply_async(save_patient_input,args=(divider,label_name,train_path,time_length,
+                     gap_length,target_length,offset_min_counts,offset_max_counts,))
+    pool.close()
+    pool.join()    
+    print("trainset Finished--consumed time : {}".format(time.time()-start_time))
+
+    ## test set generating
+    print("Creating pool with 8 workers")
+    start_time = time.time()
+    pool = multiprocessing.Pool()
+    print("Invoking apply test_set")
+    for divider in np.array_split(test_set,8):
+        pool.apply_async(save_patient_input,args=(divider,label_name,test_path,time_length,
+                     gap_length,target_length,offset_min_counts,offset_max_counts,))
+    pool.close()
+    pool.join()    
+    print("testset Finished--consumed time : {}".format(time.time()-start_time))
+
+    ## validation set generating
+    print("Creating pool with 8 workers")
+    start_time = time.time()
+    pool = multiprocessing.Pool()
+    print("Invoking apply test_set")
+    for divider in np.array_split(validation_set,8):
+        pool.apply_async(save_patient_input,args=(divider,label_name,validation_path,time_length,
+                     gap_length,target_length,offset_min_counts,offset_max_counts,))
+    pool.close()
+    pool.join()    
+    print("validation Finished--consumed time : {}".format(time.time()-start_time))
