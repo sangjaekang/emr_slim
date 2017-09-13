@@ -46,7 +46,7 @@ def save_patient_input(no_range,label_name,save_dir=None,time_length=6,gap_lengt
         if DEBUG_PRINT and idx %50 == 0:  print("process({}){} th start".format(os.getpid(),idx))
         emr_df = get_labtest_df(no)
         label_series = get_patient_timeseries_label(no,label_df)
-
+        if emr_df.count().sum() <= offset_min_counts : continue
         for i in range(0,len(colist) - (time_length+gap_length+target_length)):
             window = emr_df.loc[:,colist[i]:colist[time_length-1+i]]
             counts_in_window = window.count().sum()
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     #argument
     args = _set_parser()
     label_name = args.label 
-    chunk_size = int(chunk_size)
+    chunk_size = int(args.chunk_size)
     time_length = int(args.time_length) 
     gap_length = int(args.gap_length)
     target_length = int(args.target_length)
@@ -221,7 +221,7 @@ if __name__ == '__main__':
     pool = multiprocessing.Pool(processes=8)
     print("Invoking apply test_set")
     for divider in np.array_split(test_set,8):
-        pool.apply_async(save_patient_input,[divider[:chunk_size],label_name,test_path,time_length,
+        pool.apply_async(save_patient_input,[divider[:4000],label_name,test_path,time_length,
                      gap_length,target_length,offset_min_counts,offset_max_counts])
     pool.close()
     pool.join()    
@@ -233,7 +233,7 @@ if __name__ == '__main__':
     pool = multiprocessing.Pool(processes=8)
     print("Invoking apply test_set")
     for divider in np.array_split(validation_set,8):
-        pool.apply_async(save_patient_input,[divider[:chunk_size],label_name,validation_path,time_length,
+        pool.apply_async(save_patient_input,[divider[:4000],label_name,validation_path,time_length,
                      gap_length,target_length,offset_min_counts,offset_max_counts,])
     pool.close()
     pool.join()    
