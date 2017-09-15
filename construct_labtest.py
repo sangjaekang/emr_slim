@@ -142,7 +142,7 @@ def divide_test_train_set_from_label_per_patient(label_name):
     test_df.to_hdf(output_path,label_name+'/test',format='table',data_columns=True,mode='a')
 
 
-def get_labtest_df(no,aggregate_type='mean'): 
+def get_labtest_df(no): 
     '''
     환자번호를　넣으면　column은　KCDcode, row는　time-serial의　형태인　dataframe이　나오는　함수
     '''
@@ -157,26 +157,58 @@ def get_labtest_df(no,aggregate_type='mean'):
         use_labtest_values = list(lab_node._v_children.keys())
         result_df = pd.DataFrame(columns=col_list, index=use_labtest_values)
 
-        for lab_name in lab_node._v_children.keys():
-            result_lab_series = result_df.loc[lab_name]
-            target_df = lab_store.select('prep/{}'.format(lab_name),where='no=={}'.format(no))
-            # 같은달에 한번 이상 했을 시,
-            if aggregate_type is 'mean':
-                target_df = target_df.groupby(['no','date']).mean().reset_index() # 결과의 평균으로 저장
-            elif aggregate_type is 'min':
-                target_df = target_df.groupby(['no','date']).min().reset_index() # 결과의 최소값으로 저장
-            elif aggregate_type is 'max':
-                target_df = target_df.groupby(['no','date']).max().reset_index() # 결과의 최대값으로 저장
-            else:
-                target_df = target_df.groupby(['no','date']).mean().reset_index() 
-            for value in target_df.values:
-                _, _date, _result = value
-                result_df.loc[lab_name].loc[_date] = _result
+        target_df=lab_store.select('total',where='no=={}'.format(no),columns=['date','lab_name','result'])\
+                                          .groupby(['date','lab_name'])\
+                                          .mean().reset_index() 
+
+        for value in target_df.values:
+            date,lab_name,result = value
+            result_df.loc[lab_name,date]= result
+
     finally:
         lab_store.close()
     
     del target_df
     return result_df
+
+
+def get_labtest_aggregated_df(no): 
+    '''
+    환자번호를　넣으면　column은　KCDcode, row는　time-serial의　형태인　dataframe이　나오는　함수
+    겹쳤을때　３가지　matrix(min max mean)가 생성．　
+    '''
+    global PREP_OUTPUT_DIR, LABTEST_OUTPUT_PATH
+    lab_output_path = PREP_OUTPUT_DIR + LABTEST_OUTPUT_PATH
+    lab_store = pd.HDFStore(lab_output_path,mode='r')
+    
+    col_list = get_timeseries_column()
+    # create empty dataframe
+    try:
+        lab_node = lab_store.get_node('prep')
+        use_labtest_values = list(lab_node._v_children.keys())
+        mean_df = pd.DataFrame(columns=col_list, index=use_labtest_values)
+        min_df  = pd.DataFrame(columns=col_list, index=use_labtest_values)
+        max_df = pd.DataFrame(columns=col_list, index=use_labtest_values)
+
+        target_df=lab_store.select('total',where='no=={}'.format(no),columns=['date','lab_name','result'])
+
+        temp = target_df.groupby(['date','lab_name']).mean().reset_index() 
+        for value in temp.values:
+            date,lab_name,result = value
+            mean_df.loc[lab_name,date]= result
+        temp = target_df.groupby(['date','lab_name']).min().reset_index() 
+        for value in temp.values:
+            date,lab_name,result = value
+            min_df.loc[lab_name,date]= result
+        temp = target_df.groupby(['date','lab_name']).max().reset_index() 
+        for value in temp.values:
+            date,lab_name,result = value
+            max_df.loc[lab_name,date]= result
+    finally:
+        lab_store.close()
+    
+    del target_df
+    return mean_df, min_df, max_df
 
 
 def convert_month(x):
