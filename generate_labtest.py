@@ -50,6 +50,7 @@ def save_patient_input(no_range,label_name,aug_target=None,save_dir=None,time_le
         
     for idx, no in enumerate(no_range):
         if DEBUG_PRINT and idx %1000 == 0:  print("process({}){} th start".format(os.getpid(),idx))
+        sys.stdout.flush()
         emr_df = get_labtest_df(no)
         label_series = get_patient_timeseries_label(no,label_df)
         if emr_df.count().sum() <= offset_min_counts : continue
@@ -88,6 +89,7 @@ def save_patient_mean_min_max(no_range,label_name,aug_target=None,save_dir=None,
         
     for idx, no in enumerate(no_range):
         if DEBUG_PRINT and idx %1000 == 0:  print("process({}){} th start".format(os.getpid(),idx))
+        sys.stdout.flush()
         mean_df,min_df,max_df = get_labtest_aggregated_df(no)
         label_series = get_patient_timeseries_label(no,label_df)
 
@@ -175,19 +177,20 @@ def get_add_interval(t,interval):
     times = (year*12+month+interval)
     return (times//12*100+ times%12)
 
-def write_metadata_README(path, label_name,time_length,gap_length,target_length,offset_min_counts,offset_max_counts):
+def write_metadata_README(path,label_name,np_stacked,time_length,gap_length,target_length,offset_min_counts,offset_max_counts):
     metadata_README = '''
 ### parameter Setting
 | parameter             | value |
 | ---------------------    | ----- |
 | label_name            | {}    |
+| avg_min_max  stacked  |{}     |
 | time_length           | {}    |
 | gap_length            | {}    |
 | target_length         | {}    |
 | offset_min_counts | {}    |
 | offset_max_counts | {}    |
 | Created date          | {}    |
-'''.format(label_name,time_length,gap_length,target_length,offset_min_counts,offset_max_counts,time.ctime())
+'''.format(label_name,np_stacked,time_length,gap_length,target_length,offset_min_counts,offset_max_counts,time.ctime())
     
     file_path = path + 'README.md'    
     with open(file_path,'w') as f:
@@ -210,6 +213,7 @@ def _set_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('path', help='save path')
     parser.add_argument('label', help='label_name')
+    parser.add_argument('np_stacked', help='numpy stacked or not, 1 : true, 0: false')
     parser.add_argument('set_type', help='train test validation')
     parser.add_argument('chunk_size', help='the number of patients using per one process')
     parser.add_argument('time_length',help='time_length')
@@ -224,6 +228,7 @@ if __name__ == '__main__':
     #argument
     args = _set_parser()
     label_name = args.label 
+    np_stacked = int(args.np_stacked)
     set_type = args.set_type
     chunk_size = int(args.chunk_size)
     time_length = int(args.time_length) 
@@ -235,7 +240,7 @@ if __name__ == '__main__':
     o_path = check_directory(args.path)
     data_path = o_path + set_type
     data_path = check_directory(data_path)
-    write_metadata_README(o_path, label_name,time_length,gap_length,target_length,offset_min_counts,offset_max_counts)
+    write_metadata_README(o_path, label_name,np_stacked,time_length,gap_length,target_length,offset_min_counts,offset_max_counts)
     
     PREP_OUTPUT_DIR = check_directory(PREP_OUTPUT_DIR)
     output_path = PREP_OUTPUT_DIR + LABEL_PATIENT_PATH
@@ -251,8 +256,24 @@ if __name__ == '__main__':
     pool = multiprocessing.Pool(processes=8)
     print("Invoking apply {}_set".format(set_type))
     for divider in np.array_split(data_set,8):
-        pool.apply_async(save_patient_input,[divider[:chunk_size],label_name,data_path,time_length,
-                     gap_length,target_length,offset_min_counts,offset_max_counts])
-    pool.close()
+        if np_stacked == 1:
+            pool.apply_async(save_patient_mean_min_max,[divider[:chunk_size],label_name,None,data_path,time_length,
+                         gap_length,target_length,offset_min_counts,offset_max_counts])
+        else :
+            pool.apply_async(save_patient_input,[divider[:chunk_size],label_name,None,data_path,time_length,
+                         gap_length,target_length,offset_min_counts,offset_max_counts])
     pool.join()    
-    print("{}_set Finished--consumed time : {}".format(set_type, time.time()-start_time))
+
+    if set_type == 'train':
+    #train 경우에만　augment 함
+        print("Invoking apply {}_set to augment label 2".format(set_type))
+        for divider in np.array_split(data_set,8):
+            if np_stacked == 1:
+                pool.apply_async(save_patient_mean_min_max,[divider[chunk_size:],label_name,2,data_path,time_length,
+                             gap_length,target_length,offset_min_counts,offset_max_counts])
+            else :
+                pool.apply_async(save_patient_input,[divider[chunk_size:],label_name,2,data_path,time_length,
+                             gap_length,target_length,offset_min_counts,offset_max_counts])
+        pool.join()
+
+        print("{}_set Finished--consumed time : {}".format(set_type, time.time()-start_time))
