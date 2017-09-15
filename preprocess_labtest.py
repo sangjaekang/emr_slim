@@ -131,7 +131,7 @@ def preprocess_per_test():
     lab_store = pd.HDFStore(output_path,mode='a')
     labtest_mapping_df = lab_store.select('metadata/mapping_table')
     try:
-        for lab_name in lab_store.get_node('data')._v_children.keys():
+        for idx, lab_name in enumerate(lab_store.get_node('data')._v_children.keys()):
             labtest_df=lab_store.select('data/{}'.format(lab_name))
             
             r_avg, r_min, r_max=get_labtest_value(labtest_mapping_df,lab_name)
@@ -140,15 +140,22 @@ def preprocess_per_test():
 
             save_key = 'prep/' + lab_name
             labtest_df = labtest_df.apply(pd.to_numeric,errors='ignore')
-            
             lab_store.append(key=save_key, value=labtest_df,data_columns=True)
+
+            if idx == 0:
+                concat_df = labtest_df.copy()
+                concat_df['lab_name'] = lab_name
+                concat_list = [concat_df]
+            else:
+                labtest_df['lab_name'] = lab_name
+                concat_list.append(labtest_df)                
 
             if DEBUG_PRINT:
                 print('{} completed'.format(lab_name))
+        concat_df = pd.concat(concat_list)
+        lab_store.append(key='total/',value=concat_df,data_columns=True)
     finally:
         lab_store.close()
-    
-
     del labtest_mapping_df
 
 
