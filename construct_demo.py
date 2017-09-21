@@ -57,7 +57,7 @@ def get_np_array_demo(no):
     global PREP_OUTPUT_DIR, DEMOGRAPHIC_OUTPUT_PATH
 
     demographic_output_path = PREP_OUTPUT_DIR + DEMOGRAPHIC_OUTPUT_PATH
-    demo_store=pd.HDFStore('demographic_output_path',mode='r')
+    demo_store=pd.HDFStore(demographic_output_path,mode='r')
     result = demo_store.select('/data/prep',where='no=={}'.format(no)).values[0,1:]
     demo_store.close()
     return result
