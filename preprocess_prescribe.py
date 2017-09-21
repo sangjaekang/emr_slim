@@ -213,7 +213,7 @@ def preprocess_prescirbe(preprocess_path):
     medicine_df.date = medicine_df.date.map(convert_month)
     medicine_df.count = medicine_df['count'].map(convert_times_per_month)
 
-    medicine_df.to_hdf(BASE_PATH+'data/prep/prescribe_df.h5','metadata/mapping_table',format='table',data_columns=True,mode='a')
+    medicine_df.to_hdf(BASE_PATH+'data/prep/prescribe_df.h5','data/',format='table',data_columns=True,mode='a')
     del medicine_df
 
 def convert_month(x):
