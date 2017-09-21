@@ -262,18 +262,21 @@ if __name__ == '__main__':
         else :
             pool.apply_async(save_patient_input,[divider[:chunk_size],label_name,None,data_path,time_length,
                          gap_length,target_length,offset_min_counts,offset_max_counts])
+    pool.close()
     pool.join()    
 
     if set_type == 'train':
     #train 경우에만　augment 함
+        pool2 = multiprocessing.Pool(processes=8)
         print("Invoking apply {}_set to augment label 2".format(set_type))
         for divider in np.array_split(data_set,8):
             if np_stacked == 1:
-                pool.apply_async(save_patient_mean_min_max,[divider[chunk_size:],label_name,2,data_path,time_length,
+                pool2.apply_async(save_patient_mean_min_max,[divider[chunk_size:],label_name,2,data_path,time_length,
                              gap_length,target_length,offset_min_counts,offset_max_counts])
             else :
-                pool.apply_async(save_patient_input,[divider[chunk_size:],label_name,2,data_path,time_length,
+                pool2.apply_async(save_patient_input,[divider[chunk_size:],label_name,2,data_path,time_length,
                              gap_length,target_length,offset_min_counts,offset_max_counts])
-        pool.join()
+        pool2.close()
+        pool2.join()
 
-        print("{}_set Finished--consumed time : {}".format(set_type, time.time()-start_time))
+    print("{}_set Finished--consumed time : {}".format(set_type, time.time()-start_time))
