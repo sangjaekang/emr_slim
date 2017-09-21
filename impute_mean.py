@@ -130,28 +130,37 @@ def get_np_array_emr(input_path,shuffling=True):
         shuffling=False
 
     np_array = np.load(input_path).astype(float)
-    np_array = pd.DataFrame(index=LAB_INDEX,data=np_array)
-    
     # 응급과　비응급　코드의　값을　공유
-    for emg,not_emg in EMGCY_AND_NOT_DICT.items():
-        avg_test = _mean_with_nan(np_array.loc[emg],np_array.loc[not_emg])
-        np_array.loc[emg] = avg_test
-        np_array.loc[not_emg] = avg_test
+    bool_array = get_np_bool_emr(np_array[0]) # get boolean mask
+    
+    result_list = []
+    for index in range(np_array.shape[0]):
+        temp_array = pd.DataFrame(index=LAB_INDEX,data=np_array[index])   
+        for emg,not_emg in EMGCY_AND_NOT_DICT.items():
+            avg_test = _mean_with_nan(temp_array.loc[emg],temp_array.loc[not_emg])
+            temp_array.loc[emg] = avg_test
+            temp_array.loc[not_emg] = avg_test
+        result_list.append(temp_array.as_matrix())
+    np_array = np.stack(result_list,axis=0)
 
-    np_array= np_array.as_matrix()
     # shuffling time for data augumentation
     result_array = np.full(np_array.shape,np.nan)
     if shuffling:
-        r_time = np_array.shape[1]
-        for x,y in np.argwhere(~np.isnan(np_array)):
+        r_time = np_array.shape[2]
+        for x,y in np.argwhere(~np.isnan(np_array[0])):
             m_y = y+_suffle_time(1)
             while (m_y<0)|(m_y>=r_time): m_y = y+_suffle_time(1)
-            result_array[x,m_y] = np_array[x,y] + np.random.normal(0,0.01) # add gaussian noise
+            for index in range(np_array.shape[0]):
+                result_array[:,x,m_y] = np_array[:,x,y] + np.random.normal(0,0.01) # add gaussian noise
     else:
         result_array = np.array(np_array,copy=True)
 
-    bool_array = get_np_bool_emr(result_array) # get boolean mask
-    imput_array = get_np_imputation_emr(result_array) # get imputation mask
-    result = np.stack((bool_array,imput_array),axis=-1)
-    del bool_array, imput_array, np_array
+    result_list = []
+    result_list.append(bool_array)
+    for i in range(result_array.shape[0]):
+        imput_array = get_np_imputation_emr(result_array[i]) # get imputation mask
+        result_list.append(imput_array)
+
+    result = np.stack(result_list,axis=-1)
+    del bool_array, imput_array, np_array, result_list
     return result
