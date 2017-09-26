@@ -14,15 +14,10 @@ sys.path.append(BASE_PATH)
 from construct_labtest import get_labtest_df, get_labtest_aggregated_df
 from config import *
 
-def save_patient_mean_min_max(no_range,label_name,aug_target=None,save_dir=None,time_length=6,gap_length=1,target_length=3,offset_min_counts=50,offset_max_counts=100):
+def save_patient_mean_min_max(no_range,label_name,aug_target=None,save_dir=None,time_length=12,gap_length=1,target_length=3,offset_min_counts=100,offset_max_counts=2000):
     global DEBUG_PRINT, PREP_OUTPUT_DIR, LABEL_PATIENT_PATH
     if save_dir is None:
         save_dir = INPUT_DIR
-
-    for label_value in range(0,3):
-        o_path = save_dir +'{}/'.format(label_value)
-        if not os.path.isdir(o_path):
-            os.makedirs(o_path)
 
     # syntax checking existence for directory
     PREP_OUTPUT_DIR = check_directory(PREP_OUTPUT_DIR)
@@ -49,6 +44,11 @@ def save_patient_mean_min_max(no_range,label_name,aug_target=None,save_dir=None,
             if counts_in_window >= offset_min_counts and counts_in_window <= offset_max_counts:
                 target_stime = colist[time_length-1+gap_length+i]
                 label_value = check_label(label_series.loc[target_stime:get_add_interval(target_stime,target_length-1)])
+                
+                o_path = save_dir +'{}/'.format(label_value)
+                if not os.path.isdir(o_path):
+                    os.makedirs(o_path)
+
                 if np.isnan(label_value): continue
                 file_path = save_dir +'{}/{}_{}.npy'.format(label_value,no,i)
                 avg_mat = window.as_matrix()
@@ -101,7 +101,7 @@ def _set_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('path', help='save path')
     parser.add_argument('label', help='label_name')
-    parser.add_argument('set_type', help='train test validation')
+    parser.add_argument('set_type', help='train test')
     parser.add_argument('chunk_size', help='the number of patients using per one process')
     parser.add_argument('time_length',help='time_length')
     parser.add_argument('gap_length', help='gap_length')
