@@ -6,6 +6,7 @@ import random
 os_path = os.path.abspath('./') ; find_path = re.compile('emr_slim')
 BASE_PATH = os_path[:find_path.search(os_path).span()[1]]
 sys.path.append(BASE_PATH)
+from config import *
 
 import keras
 from keras.models import Sequential

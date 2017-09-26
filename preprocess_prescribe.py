@@ -4,6 +4,7 @@ import sys, os, re
 os_path = os.path.abspath('./') ; find_path = re.compile('emr_slim')
 BASE_PATH = os_path[:find_path.search(os_path).span()[1]]
 sys.path.append(BASE_PATH)
+from config import *
 from converter.config import *
 from converter.convert_common import check_directory
 
@@ -216,21 +217,6 @@ def preprocess_prescirbe(preprocess_path):
     medicine_df.to_hdf(BASE_PATH+'data/prep/prescribe_df.h5','data/',format='table',data_columns=True,mode='a')
     del medicine_df
 
-def convert_month(x):
-    '''
-    datetype을　month 단위로　바꾸어주는　함수
-        ex) 20110132 -> 1101
-    '''
-    re_date = re.compile('^\d{8}$') 
-
-    str_x = str(x)
-    if re_date.match(str_x):
-        return int(str_x[2:6])
-    else : 
-        raise ValueError("wrong number in date : {}".format(str_x))
-
-def convert_times_per_month(x):
-    return float(x) // 30
 
 def _set_parser():
     parser = argparse.ArgumentParser()

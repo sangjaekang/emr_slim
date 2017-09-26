@@ -8,12 +8,7 @@ os_path = os.path.abspath('./') ; find_path = re.compile('emr_slim')
 BASE_PATH = os_path[:find_path.search(os_path).span()[1]]
 sys.path.append(BASE_PATH)
 
-# output path setting
-DATA_DIR  = BASE_PATH + '/data/'
-PREP_OUTPUT_DIR =  DATA_DIR + 'prep/'
-LABTEST_OUTPUT_PATH = 'labtest_df.h5'
-labtest_output_path = PREP_OUTPUT_DIR + LABTEST_OUTPUT_PATH
-
+from config import *
 '''
 응급코드와　비응급코드는　결과값을　공유
 |측정내용|응급코드|비응급코드|

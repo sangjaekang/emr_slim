@@ -12,18 +12,7 @@ BASE_PATH = os_path[:find_path.search(os_path).span()[1]]
 sys.path.append(BASE_PATH)
 
 from construct_labtest import get_labtest_df, get_labtest_aggregated_df
-
-DEBUG_PRINT=True
-
-## time period among data
-START_TIME = 20100101
-END_TIME  = 20161231
-
-## data directory
-DATA_DIR  = BASE_PATH + '/data/'
-PREP_OUTPUT_DIR  = DATA_DIR + 'prep/'
-INPUT_DIR = DATA_DIR +'input/'
-LABEL_PATIENT_PATH = 'label_patient_df.h5'
+from config import *
 
 def save_patient_mean_min_max(no_range,label_name,aug_target=None,save_dir=None,time_length=6,gap_length=1,target_length=3,offset_min_counts=50,offset_max_counts=100):
     global DEBUG_PRINT, PREP_OUTPUT_DIR, LABEL_PATIENT_PATH
@@ -76,68 +65,7 @@ def get_patient_timeseries_label(no,label_df):
     return result_series
 
 
-def check_directory(directory_path):
-    # syntax checking for directory
-    if not (directory_path[-1] is '/'):
-        directory_path  = directory_path + '/'
-    # not exists in directory
-    if not os.path.exists(directory_path):
-        os.makedirs(directory_path)
-    
-    return directory_path        
-
-
-def yield_time_column(time,end_t):
-    # time-series column을　만드는데　있어서　순차적으로　생성하는　함수
-    # 1210 1211 1212 1301 1302 이런식으로　생성
-    while time <= end_t:
-        yield time
-        year = time // 100 ; month = time % 100
-        if month >= 12 :
-            year = year + 1
-            month = 1
-        else : 
-            month = month + 1
-        time = (year*100 + month) 
-        
-
-def get_timeseries_column():
-    global START_TIME, END_TIME
-    start_time = check_time_format(START_TIME)
-    end_time  = check_time_format(END_TIME)
-
-    col_list = []
-    for time in yield_time_column(start_time,end_time):
-        col_list.append(time)
-
-    return col_list
-
-def check_time_format(x):
-    # timeformat(ex: 20170801)의　형태로　되어있는지　확인하는　함수
-    re_time = re.compile('^\d{8}$')
-    if re_time.match(str(x)):
-        return int(str(x)[2:6])
-    else:
-        raise ValueError("wrong type time format : {}".format(x))
-
-
-def get_time_interval(t_1,t_2):
-    #t_1 t_2 두 시각의 시간 차 계산
-    def _get_time(t):
-        year = t//100; month = t%100
-        return (year*12+month)
-    if t_1<t_2:
-        return _get_time(t_2)-_get_time(t_1)
-    else :
-        return _get_time(t_1)-_get_time(t_2)
-
-def get_add_interval(t,interval):
-    #t에다가　interval을　더한　시간
-    year = t//100; month = t%100
-    times = (year*12+month+interval)
-    return (times//12*100+ times%12)
-
-def write_metadata_README(path,label_name,np_stacked,time_length,gap_length,target_length,offset_min_counts,offset_max_counts):
+def write_metadata_README(path,label_name,time_length,gap_length,target_length,offset_min_counts,offset_max_counts):
     metadata_README = '''
 ### parameter Setting
 | parameter             | value |
@@ -150,7 +78,7 @@ def write_metadata_README(path,label_name,np_stacked,time_length,gap_length,targ
 | offset_min_counts | {}    |
 | offset_max_counts | {}    |
 | Created date          | {}    |
-'''.format(label_name,np_stacked,time_length,gap_length,target_length,offset_min_counts,offset_max_counts,time.ctime())
+'''.format(label_name,time_length,gap_length,target_length,offset_min_counts,offset_max_counts,time.ctime())
     
     file_path = path + 'README.md'    
     with open(file_path,'w') as f:
@@ -173,7 +101,6 @@ def _set_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('path', help='save path')
     parser.add_argument('label', help='label_name')
-    parser.add_argument('np_stacked', help='numpy stacked or not, 1 : true, 0: false')
     parser.add_argument('set_type', help='train test validation')
     parser.add_argument('chunk_size', help='the number of patients using per one process')
     parser.add_argument('time_length',help='time_length')
@@ -188,7 +115,6 @@ if __name__ == '__main__':
     #argument
     args = _set_parser()
     label_name = args.label 
-    np_stacked = int(args.np_stacked)
     set_type = args.set_type
     chunk_size = int(args.chunk_size)
     time_length = int(args.time_length) 
@@ -200,7 +126,7 @@ if __name__ == '__main__':
     o_path = check_directory(args.path)
     data_path = o_path + set_type
     data_path = check_directory(data_path)
-    write_metadata_README(o_path, label_name,np_stacked,time_length,gap_length,target_length,offset_min_counts,offset_max_counts)
+    write_metadata_README(o_path, label_name,time_length,gap_length,target_length,offset_min_counts,offset_max_counts)
     
     PREP_OUTPUT_DIR = check_directory(PREP_OUTPUT_DIR)
     output_path = PREP_OUTPUT_DIR + LABEL_PATIENT_PATH
@@ -216,27 +142,19 @@ if __name__ == '__main__':
     pool = multiprocessing.Pool(processes=8)
     print("Invoking apply {}_set".format(set_type))
     for divider in np.array_split(data_set,8):
-        if np_stacked == 1:
-            pool.apply_async(save_patient_mean_min_max,[divider[:chunk_size],label_name,None,data_path,time_length,
-                         gap_length,target_length,offset_min_counts,offset_max_counts])
-        else :
-            pool.apply_async(save_patient_input,[divider[:chunk_size],label_name,None,data_path,time_length,
+        pool.apply_async(save_patient_mean_min_max,[divider[:chunk_size],label_name,None,data_path,time_length,
                          gap_length,target_length,offset_min_counts,offset_max_counts])
     pool.close()
     pool.join()    
 
-    if set_type == 'train':
-    #train 경우에만　augment 함
-        pool2 = multiprocessing.Pool(processes=8)
-        print("Invoking apply {}_set to augment label 2".format(set_type))
-        for divider in np.array_split(data_set,8):
-            if np_stacked == 1:
-                pool2.apply_async(save_patient_mean_min_max,[divider[chunk_size:],label_name,2,data_path,time_length,
-                             gap_length,target_length,offset_min_counts,offset_max_counts])
-            else :
-                pool2.apply_async(save_patient_input,[divider[chunk_size:],label_name,2,data_path,time_length,
-                             gap_length,target_length,offset_min_counts,offset_max_counts])
-        pool2.close()
-        pool2.join()
+    # if set_type == 'train':
+    # #train 경우에만　augment 함
+    #     pool2 = multiprocessing.Pool(processes=8)
+    #     print("Invoking apply {}_set to augment label 2".format(set_type))
+    #     for divider in np.array_split(data_set,8):
+    #         pool2.apply_async(save_patient_mean_min_max,[divider[chunk_size:],label_name,2,data_path,time_length,
+    #                          gap_length,target_length,offset_min_counts,offset_max_counts])
+    #     pool2.close()
+    #     pool2.join()
 
     print("{}_set Finished--consumed time : {}".format(set_type, time.time()-start_time))

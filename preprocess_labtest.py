@@ -7,20 +7,12 @@ import os
 import argparse
 import time
 
-DELIM = '\x0b'
-LAB_COL_NAME = ['no','lab_code','date','result']
-USE_LAB_COL_NAME = ['no','date','result']
-DEBUG_PRINT = True
-
 ## data directory
 os_path = os.path.abspath('./')
 find_path = re.compile('emr_slim')
 BASE_PATH = os_path[:find_path.search(os_path).span()[1]]
 
-DATA_DIR  = BASE_PATH + '/data/'
-PREP_OUTPUT_DIR =  DATA_DIR + 'prep/'
-LABTEST_OUTPUT_PATH = 'labtest_df.h5'
-
+from config import *
 
 def divide_per_test(lab_test_path):
     #labtest 별로　나누어서，　HDFStore에　저장하는　함수
@@ -158,17 +150,6 @@ def preprocess_per_test():
         lab_store.close()
     del labtest_mapping_df
 
-
-def check_directory(directory_path):
-    # syntax checking for directory
-    if not (directory_path[-1] is '/'):
-        directory_path  = directory_path + '/'
-    # not exists in directory
-    if not os.path.exists(directory_path):
-        os.makedirs(directory_path)
-    
-    return directory_path        
-
 def revise_avg(x):
     # 10~90% 내에 있는 값을 이용해서 평균 계산
     quan_min = x.quantile(0.10)
@@ -239,20 +220,6 @@ def get_labtest_map():
 
     labtest_mapping_df = pd.read_csv(lab_mapping_path,delimiter=DELIM)
     return labtest_mapping_df
-
-
-def convert_month(x):
-    '''
-    datetype을　month 단위로　바꾸어주는　함수
-    ex) 20110132 -> 1101
-    '''
-    re_date = re.compile('^\d{8}$') 
-
-    str_x = str(x)
-    if re_date.match(str_x):
-        return int(str_x[2:6])
-    else : 
-        raise ValueError("wrong number in date : {}".format(str_x))
 
 
 def normalize_number(mean_x,min_x,max_x):
