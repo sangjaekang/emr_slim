@@ -11,6 +11,7 @@ os_path = os.path.abspath('./')
 find_path = re.compile('emr_slim')
 BASE_PATH = os_path[:find_path.search(os_path).span()[1]]
 
+from config import *
 
 def get_na_label_df():
     global PREP_OUTPUT_DIR, LABEL_PATIENT_PATH, DEBUG_PRINT
@@ -119,12 +120,14 @@ def divide_test_train_set_from_label_per_patient(label_name):
 
     patient_no_arr = label_df.no.unique()
     np.random.shuffle(patient_no_arr)
-    train_patient ,test_patient = np.split(patient_no_arr,[int(.7*len(patient_no_arr)), int(.8*len(patient_no_arr))])
+    train_patient, validate_patient, test_patient = np.split(patient_no_arr,[int(.7*len(patient_no_arr)), int(.8*len(patient_no_arr))])
 
     train_df = label_df[label_df.no.isin(train_patient)]
+    validate_df = label_df[label_df.no.isin(validate_patient)]
     test_df = label_df[label_df.no.isin(test_patient)]
     
     train_df.to_hdf(output_path,label_name+'/train',format='table',data_columns=True,mode='a')
+    validate_df.to_hdf(output_path,label_name+'/validation',format='table',data_columns=True,mode='a')
     test_df.to_hdf(output_path,label_name+'/test',format='table',data_columns=True,mode='a')
 
 

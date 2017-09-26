@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+import re
+import os
+os_path = os.path.abspath('./')
+find_path = re.compile('emr_slim')
+BASE_PATH = os_path[:find_path.search(os_path).span()[1]]
+
 ## DATA Setting
 DELIM = '\x0b'
 LAB_COL_NAME = ['no','lab_code','date','result']
