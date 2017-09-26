@@ -71,7 +71,6 @@ def write_metadata_README(path,label_name,time_length,gap_length,target_length,o
 | parameter             | value |
 | ---------------------    | ----- |
 | label_name            | {}    |
-| avg_min_max  stacked  |{}     |
 | time_length           | {}    |
 | gap_length            | {}    |
 | target_length         | {}    |
@@ -101,7 +100,7 @@ def _set_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('path', help='save path')
     parser.add_argument('label', help='label_name')
-    parser.add_argument('set_type', help='train test')
+    parser.add_argument('set_type', help='train test validation')
     parser.add_argument('chunk_size', help='the number of patients using per one process')
     parser.add_argument('time_length',help='time_length')
     parser.add_argument('gap_length', help='gap_length')
