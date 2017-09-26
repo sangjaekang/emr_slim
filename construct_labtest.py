@@ -7,21 +7,9 @@ import os
 import argparse
 import time
 
-DEBUG_PRINT=True
-
-## time period among data
-START_TIME = 20100101
-END_TIME  = 20161231
-
 os_path = os.path.abspath('./')
 find_path = re.compile('emr_slim')
 BASE_PATH = os_path[:find_path.search(os_path).span()[1]]
-
-## data directory
-DATA_DIR  = BASE_PATH + '/data/'
-PREP_OUTPUT_DIR  = DATA_DIR + 'prep/'
-LABEL_PATIENT_PATH = 'label_patient_df.h5'
-LABTEST_OUTPUT_PATH = 'labtest_df.h5'
 
 
 def get_na_label_df():
@@ -131,14 +119,12 @@ def divide_test_train_set_from_label_per_patient(label_name):
 
     patient_no_arr = label_df.no.unique()
     np.random.shuffle(patient_no_arr)
-    train_patient ,validate_patient ,test_patient = np.split(patient_no_arr,[int(.6*len(patient_no_arr)),int(.8*len(patient_no_arr))])
+    train_patient ,test_patient = np.split(patient_no_arr,[int(.7*len(patient_no_arr)), int(.8*len(patient_no_arr))])
 
     train_df = label_df[label_df.no.isin(train_patient)]
-    validate_df = label_df[label_df.no.isin(validate_patient)]
     test_df = label_df[label_df.no.isin(test_patient)]
     
     train_df.to_hdf(output_path,label_name+'/train',format='table',data_columns=True,mode='a')
-    validate_df.to_hdf(output_path,label_name+'/validation',format='table',data_columns=True,mode='a')
     test_df.to_hdf(output_path,label_name+'/test',format='table',data_columns=True,mode='a')
 
 
@@ -160,11 +146,9 @@ def get_labtest_df(no):
         target_df=lab_store.select('total',where='no=={}'.format(no),columns=['date','lab_name','result'])\
                                           .groupby(['date','lab_name'])\
                                           .mean().reset_index() 
-
         for value in target_df.values:
             date,lab_name,result = value
             result_df.loc[lab_name,date]= result
-
     finally:
         lab_store.close()
     

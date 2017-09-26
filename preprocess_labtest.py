@@ -7,7 +7,7 @@ import os
 import argparse
 import time
 
-DELIM = ','
+DELIM = '\x0b'
 LAB_COL_NAME = ['no','lab_code','date','result']
 USE_LAB_COL_NAME = ['no','date','result']
 DEBUG_PRINT = True
@@ -278,7 +278,7 @@ def normalize_number(mean_x,min_x,max_x):
                 return (np.float(str_x) - min_x)/(max_x-min_x)
         else:
             if re_lower.match(str_x):
-                return np.float(0)
+                return 0
             elif re_upper.match(str_x):
                 return  np.float(1)
             elif re_star.match(str_x):

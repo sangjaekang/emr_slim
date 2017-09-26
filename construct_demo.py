@@ -11,11 +11,6 @@ os_path = os.path.abspath('./')
 find_path = re.compile('emr_slim')
 BASE_PATH = os_path[:find_path.search(os_path).span()[1]]
 
-## data directory
-DATA_DIR  = BASE_PATH + '/data/'
-PREP_OUTPUT_DIR  = DATA_DIR + 'prep/'
-DEMOGRAPHIC_OUTPUT_PATH = 'demo_df.h5'
-
 def check_age(x):
     if not isinstance(x,float):
         return np.nan

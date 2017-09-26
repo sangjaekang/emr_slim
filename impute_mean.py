@@ -118,7 +118,7 @@ def get_np_imputation_emr(np_array):
 def get_np_array_pres(input_path,width=12):
     no, order = input_path.split('/')[-1].replace('.npy',"").split('_')[0], input_path.split('/')[-1].replace('.npy',"").split('_')[1]
     prescribe_df = get_prescribe_df(no)
-    window = prescribe_df.iloc[:,order:order+width]
+    window = prescribe_df.iloc[:,int(order):int(order)+width]
     del prescribe_df
     return window.as_matrix()
 
