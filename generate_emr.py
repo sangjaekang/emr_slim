@@ -44,18 +44,15 @@ def save_patient_mean_min_max(no_range,label_name,aug_target=None,save_dir=None,
             if counts_in_window >= offset_min_counts and counts_in_window <= offset_max_counts:
                 target_stime = colist[time_length-1+gap_length+i]
                 label_value = check_label(label_series.loc[target_stime:get_add_interval(target_stime,target_length-1)])
-                
+                if np.isnan(label_value): continue
                 o_path = save_dir +'{}/'.format(label_value)
                 if not os.path.isdir(o_path):
                     os.makedirs(o_path)
-
-                if np.isnan(label_value): continue
-                file_path = save_dir +'{}/{}_{}.npy'.format(label_value,no,i)
+                file_path = o_path +'{}_{}.npy'.format(no,i)
                 avg_mat = window.as_matrix()
                 min_mat = min_df.loc[:,colist[i]:colist[i+time_length-1]].as_matrix()
                 max_mat = max_df.loc[:,colist[i]:colist[i+time_length-1]].as_matrix()
                 np.save(file_path,np.stack((avg_mat,min_mat,max_mat)))
-
 
 def get_patient_timeseries_label(no,label_df):
     global  PREP_OUTPUT_DIR,  LABEL_PATIENT_PATH
