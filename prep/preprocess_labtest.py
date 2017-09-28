@@ -12,7 +12,7 @@ os_path = os.path.abspath('./')
 find_path = re.compile('emr_slim')
 BASE_PATH = os_path[:find_path.search(os_path).span()[1]]
 
-from config import *
+from .config import *
 
 def divide_per_test(lab_test_path):
     #labtest 별로　나누어서，　HDFStore에　저장하는　함수

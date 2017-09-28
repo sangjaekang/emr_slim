@@ -11,7 +11,7 @@ os_path = os.path.abspath('./')
 find_path = re.compile('emr_slim')
 BASE_PATH = os_path[:find_path.search(os_path).span()[1]]
 
-from config import *
+from .config import *
 
 def get_na_label_df():
     global PREP_OUTPUT_DIR, LABEL_PATIENT_PATH, DEBUG_PRINT

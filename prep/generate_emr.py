@@ -11,8 +11,8 @@ os_path = os.path.abspath('./') ; find_path = re.compile('emr_slim')
 BASE_PATH = os_path[:find_path.search(os_path).span()[1]]
 sys.path.append(BASE_PATH)
 
-from construct_labtest import get_labtest_df, get_labtest_aggregated_df
-from config import *
+from .construct_labtest import get_labtest_df, get_labtest_aggregated_df
+from .config import *
 
 def save_patient_mean_min_max(no_range,label_name,aug_target=None,save_dir=None,time_length=12,gap_length=1,target_length=3,offset_min_counts=100,offset_max_counts=2000):
     global DEBUG_PRINT, PREP_OUTPUT_DIR, LABEL_PATIENT_PATH

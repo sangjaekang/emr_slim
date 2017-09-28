@@ -2,13 +2,13 @@
 import sys, os, re
 import pandas as pd
 import numpy as np
-from construct_prescribe import get_prescribe_df
+from .construct_prescribe import get_prescribe_df
 
 os_path = os.path.abspath('./') ; find_path = re.compile('emr_slim')
 BASE_PATH = os_path[:find_path.search(os_path).span()[1]]
 sys.path.append(BASE_PATH)
 
-from config import *
+from .config import *
 '''
 응급코드와　비응급코드는　결과값을　공유
 |측정내용|응급코드|비응급코드|

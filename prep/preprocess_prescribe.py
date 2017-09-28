@@ -4,9 +4,7 @@ import sys, os, re
 os_path = os.path.abspath('./') ; find_path = re.compile('emr_slim')
 BASE_PATH = os_path[:find_path.search(os_path).span()[1]]
 sys.path.append(BASE_PATH)
-from config import *
-from converter.config import *
-from converter.convert_common import check_directory
+from .config import *
 
 def strip_space(x):
     # 띄어쓰기 날려버리는 함수

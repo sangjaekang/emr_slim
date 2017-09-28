@@ -22,7 +22,7 @@ from keras.utils import np_utils
 from keras import initializers
 #from keras_tqdm import TQDMNotebookCallback
 from keras.callbacks import EarlyStopping, ModelCheckpoint
-from impute_mean import *
+from prep.impute_mean import *
 
 import matplotlib
 matplotlib.use('Agg')   

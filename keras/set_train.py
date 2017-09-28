@@ -39,9 +39,9 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from construct_demo import *
-from impute_mean import *
-from prediction_model import *
+from prep.construct_demo import *
+from prep.impute_mean import *
+from prep.prediction_model import *
 
 def get_np(input_dir,shuffling=True):
     global num_classes
